@@ -4,7 +4,7 @@ use speedy2d::Window;
 fn main() {
     
     let window = Window::new_centered(
-        "Chaikin ---> Left-click add, Right-click and drag to move, Enter start/pause, C clear, Esc quit",
+        "Chaikin: Left-click --> add | drag with Right-click --> move | Enter --> start/pause | C --> clear | Esc --> quit",
         (WIDTH as u32, HEIGHT as u32),
     )
     .unwrap();
