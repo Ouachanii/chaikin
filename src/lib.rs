@@ -6,13 +6,13 @@ use speedy2d::{
 };
 use std::time::{Duration, Instant};
 
-pub const WIDTH: f32 = 1024.0;
-pub const HEIGHT: f32 = 860.0;
+pub const WIDTH: f32 = 860.0;
+pub const HEIGHT: f32 = 800.0;
 const MAX_STEPS: usize = 7;
 const CLICK_RADIUS: f32 = 10.0;
-const POINT_OUTER_R: f32 = 7.0;
-const POINT_INNER_R: f32 = 3.0;
-const ANIM_INTERVAL: Duration = Duration::from_millis(800);
+const POINT_OUTER_R: f32 = 5.0;
+const POINT_INNER_R: f32 = 3.5;
+const ANIM_INTERVAL: Duration = Duration::from_millis(1100);
 
 #[derive(Clone, Copy, Debug)]
 struct Pt {
@@ -106,6 +106,7 @@ pub struct App {
     anim_running: bool,
     anim_step: usize,
     last_anim_instant: Instant,
+    closed: bool,
 }
 
 impl App {
@@ -119,6 +120,7 @@ impl App {
             anim_running: false,
             anim_step: 0,
             last_anim_instant: Instant::now(),
+            closed: false,
         }
     }
 
@@ -148,7 +150,7 @@ impl App {
         let color = if highlight {
             Color::GREEN
         } else {
-            Color::from_rgb(0.12, 0.12, 0.12)
+            Color::from_rgb(0.07, 0.07, 0.07)
         };
 
         let a: Vector2<f32> = a.into();
@@ -192,7 +194,7 @@ impl WindowHandler for App {
 
         if to_draw.len() >= 2 {
             for w in to_draw.windows(2) {
-                self.draw_line(graphics, w[0], w[1], 2.0, true);
+                self.draw_line(graphics, w[0], w[1], 1.0, true);
             }
             if closed_detected {
                 self.draw_line(graphics, *to_draw.last().unwrap(), to_draw[0], 2.0, true);
@@ -221,16 +223,41 @@ impl WindowHandler for App {
     }
 
     fn on_mouse_button_down(&mut self, _helper: &mut WindowHelper, button: MouseButton) {
-        let pt = Self::mouse_pos_to_pt(self.last_mouse_pos);
-        match button {
-            MouseButton::Right => self.dragging = self.find_point_index_near(pt, CLICK_RADIUS),
-            MouseButton::Left => {
-                self.control_points.push(pt);
-                self.recompute_cache();
-            }
-            _ => {}
+    let pt = Self::mouse_pos_to_pt(self.last_mouse_pos);
+    match button {
+        MouseButton::Right => {
+            self.dragging = self.find_point_index_near(pt, CLICK_RADIUS);
         }
+        
+        MouseButton::Left => {
+            
+            let mut near = false;
+            for i in 0..self.control_points.len() {
+                if dist2(pt, self.control_points[i]) < 250.0 {
+                    near = true;
+                }
+            }
+            if self.control_points.len() >= 3 {
+                // check if clicked near the first point
+                if dist2(pt, self.control_points[0]) <= CLICK_RADIUS * CLICK_RADIUS {
+                    // push the *first point* again to close the shape
+                    self.control_points.push(self.control_points[0]);
+                    self.closed = true;
+                } else if !near && !self.closed {
+                    // normal add
+                    self.control_points.push(pt);
+                }
+            } else if self.control_points.len() > 0 && !near && !self.closed {
+                // check if less than 3 points and if clicked near 
+                self.control_points.push(pt);
+            } else if self.control_points.len() == 0 {
+                self.control_points.push(pt);
+            }
+            self.recompute_cache();
+        }
+        _ => {}
     }
+}
 
     fn on_mouse_button_up(&mut self, _helper: &mut WindowHelper, button: MouseButton) {
         if button == MouseButton::Right {
@@ -252,6 +279,7 @@ impl WindowHandler for App {
                 self.control_points.clear();
                 self.recompute_cache();
                 self.anim_running = false;
+                self.closed = false;
                 self.anim_step = 0;
             }
             _ => {}
